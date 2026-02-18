@@ -1,11 +1,14 @@
 CC = gcc
 CFLAGS = -O2 -Wall -g
-TARGET = rowhammer
+TARGETS = rowhammer benign_workload
 
-all: $(TARGET)
+all: $(TARGETS)
 
-$(TARGET): rowhammer.c
-	$(CC) $(CFLAGS) -o $(TARGET) rowhammer.c
+rowhammer: rowhammer.c
+	$(CC) $(CFLAGS) -o rowhammer rowhammer.c
+
+benign_workload: benign_workload.c
+	$(CC) $(CFLAGS) -o benign_workload benign_workload.c
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGETS)
