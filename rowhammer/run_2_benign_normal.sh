@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# STEP 1: Attack Experiments
-# - Normal + Attack
-# - Hot + Attack
+# Benign Experiments - Normal Voltage
+# 1. Benign + Normal
+# 2. Benign + Hot
 
 set -e
 
 echo "========================================"
-echo "STEP 1: Attack Experiments"
+echo "Benign Experiments (Normal Voltage)"
 echo "========================================"
 echo ""
-echo "This will run:"
-echo "  1. Normal + Attack"
-echo "  2. Hot + Attack"
+echo "This will collect:"
+echo "  1. Benign + Normal"
+echo "  2. Benign + Hot"
 echo ""
 echo "Estimated time: 15-20 minutes"
 echo ""
@@ -21,14 +21,12 @@ if [[ "$CONFIRM" != "y" ]]; then
     exit 0
 fi
 
-# 결과 디렉토리
-RESULT_DIR="attack_results"
+RESULT_DIR="results"
 mkdir -p "$RESULT_DIR"
 echo ""
 echo "[*] Results will be saved to: $RESULT_DIR"
 echo ""
 
-# 쿨다운 함수
 cooldown() {
     local DURATION=$1
     echo ""
@@ -41,29 +39,26 @@ cooldown() {
     echo ""
 }
 
-# Normal + Attack
 echo ""
-echo "[1/2] Normal + Attack"
-python3 collect_data.py "Normal_Attack" "${RESULT_DIR}/normal_attack.csv"
+echo "[1/2] Benign + Normal"
+python3 collect_benign.py "Benign_Normal" "${RESULT_DIR}/benign_normal.csv"
 cooldown 180
 
-# Hot + Attack
 echo ""
-echo "[2/2] Hot + Attack"
-python3 collect_data.py "Hot_Attack" "${RESULT_DIR}/hot_attack.csv" --hot
+echo "[2/2] Benign + Hot"
+python3 collect_benign.py "Benign_Hot" "${RESULT_DIR}/benign_hot.csv" --hot
+cooldown 180
 
-# 완료
 echo ""
 echo "========================================"
-echo "Attack Experiments Complete!"
+echo "Complete!"
 echo "========================================"
+ls -lh "$RESULT_DIR"/benign_*.csv
 echo ""
-ls -lh "$RESULT_DIR"/*.csv
-echo ""
-for file in "$RESULT_DIR"/*.csv; do
+for file in "$RESULT_DIR"/benign_*.csv; do
     FLIPS=$(awk -F',' 'NR>1 {sum+=$9} END {print sum}' "$file")
     echo "$(basename $file): $FLIPS flips"
 done
 echo ""
-echo "[+] Step 1 complete!"
-echo "[*] Next: sudo ./run_2_benign.sh"
+echo "[+] Benign (Normal Voltage) complete!"
+echo "[*] Next: sudo ./run_3_idle_normal.sh"

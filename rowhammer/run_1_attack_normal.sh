@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# STEP 3: Idle Experiments
-# - Idle + Normal
-# - Idle + Hot
+# Attack Experiments - Normal Voltage
+# 1. Attack + Normal
+# 2. Attack + Hot
 
 set -e
 
 echo "========================================"
-echo "STEP 3: Idle Experiments"
+echo "Attack Experiments (Normal Voltage)"
 echo "========================================"
 echo ""
-echo "This will run:"
-echo "  1. Idle + Normal"
-echo "  2. Idle + Hot"
+echo "This will collect:"
+echo "  1. Attack + Normal"
+echo "  2. Attack + Hot"
 echo ""
 echo "Estimated time: 15-20 minutes"
 echo ""
@@ -21,14 +21,12 @@ if [[ "$CONFIRM" != "y" ]]; then
     exit 0
 fi
 
-# 결과 디렉토리
-RESULT_DIR="idle_results"
+RESULT_DIR="results"
 mkdir -p "$RESULT_DIR"
 echo ""
 echo "[*] Results will be saved to: $RESULT_DIR"
 echo ""
 
-# 쿨다운 함수
 cooldown() {
     local DURATION=$1
     echo ""
@@ -41,34 +39,26 @@ cooldown() {
     echo ""
 }
 
-# Idle + Normal
 echo ""
-echo "[1/2] Idle + Normal"
-python3 collect_idle.py "Idle_Normal" "${RESULT_DIR}/idle_normal.csv"
+echo "[1/2] Attack + Normal"
+python3 collect_data.py "Attack_Normal" "${RESULT_DIR}/attack_normal.csv"
 cooldown 180
 
-# Idle + Hot
 echo ""
-echo "[2/2] Idle + Hot"
-python3 collect_idle.py "Idle_Hot" "${RESULT_DIR}/idle_hot.csv" --hot
+echo "[2/2] Attack + Hot"
+python3 collect_data.py "Attack_Hot" "${RESULT_DIR}/attack_hot.csv" --hot
+cooldown 180
 
-# 완료
 echo ""
 echo "========================================"
-echo "Idle Experiments Complete!"
+echo "Complete!"
 echo "========================================"
+ls -lh "$RESULT_DIR"/attack_*.csv
 echo ""
-ls -lh "$RESULT_DIR"/*.csv
-echo ""
-for file in "$RESULT_DIR"/*.csv; do
+for file in "$RESULT_DIR"/attack_*.csv; do
     FLIPS=$(awk -F',' 'NR>1 {sum+=$9} END {print sum}' "$file")
     echo "$(basename $file): $FLIPS flips"
 done
 echo ""
-echo "[+] Step 3 complete!"
-echo "[*] All main experiments done!"
-echo ""
-echo "Optional: Low voltage experiments"
-echo "  1. sudo ./set_voltage.sh (enter -2)"
-echo "  2. sudo reboot"
-echo "  3. sudo ./run_4_lowvolt.sh"
+echo "[+] Attack (Normal Voltage) complete!"
+echo "[*] Next: sudo ./run_2_benign_normal.sh"

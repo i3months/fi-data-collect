@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# STEP 4: Low Voltage Experiments (Optional)
-# - LowVolt + Attack
-# - LowVolt + Benign
+# Idle Experiments - Low Voltage
+# 1. Idle + LowVolt
+# 2. Idle + Hot + LowVolt
 
 set -e
 
 echo "========================================"
-echo "STEP 4: Low Voltage Experiments"
+echo "Idle Experiments (Low Voltage)"
 echo "========================================"
 echo ""
 
@@ -18,40 +18,30 @@ echo "[*] Current voltage: $CURRENT_VOLT"
 echo "[*] over_voltage setting: $OVER_VOLT"
 echo ""
 
-# 저전압 확인
 VOLT_NUM=$(echo "$OVER_VOLT" | grep -oP '(?<=over_voltage=)-?\d+' || echo "0")
 if [ "$VOLT_NUM" -ge 0 ]; then
     echo "[!] WARNING: System is NOT in low voltage mode!"
-    echo "[!] Current over_voltage = $VOLT_NUM (should be negative)"
-    echo ""
-    echo "Please set low voltage first:"
-    echo "  1. sudo ./set_voltage.sh"
-    echo "  2. Enter -2 (RPi 4) or -4 (RPi Zero 2)"
-    echo "  3. Reboot"
-    echo "  4. Run this script again"
-    echo ""
+    echo "[!] Please set low voltage first"
     exit 1
 fi
 
-echo "This will run:"
-echo "  1. LowVolt + Attack"
-echo "  2. LowVolt + Benign"
+echo "This will collect:"
+echo "  1. Idle + LowVolt"
+echo "  2. Idle + Hot + LowVolt"
 echo ""
-echo "Estimated time: 5-10 minutes"
+echo "Estimated time: 15-20 minutes"
 echo ""
 read -p "Continue? (y/N): " CONFIRM
 if [[ "$CONFIRM" != "y" ]]; then
     exit 0
 fi
 
-# 결과 디렉토리
-RESULT_DIR="lowvolt_results"
+RESULT_DIR="results"
 mkdir -p "$RESULT_DIR"
 echo ""
 echo "[*] Results will be saved to: $RESULT_DIR"
 echo ""
 
-# 쿨다운 함수
 cooldown() {
     local DURATION=$1
     echo ""
@@ -65,33 +55,36 @@ cooldown() {
     echo ""
 }
 
-# LowVolt + Attack
 echo ""
-echo "[1/2] LowVolt + Attack"
-python3 collect_data.py "LowVolt_Attack" "${RESULT_DIR}/lowvolt_attack.csv"
+echo "[1/2] Idle + LowVolt"
+python3 collect_idle.py "Idle_LowVolt" "${RESULT_DIR}/idle_lowvolt.csv"
 cooldown 180
 
-# LowVolt + Benign
 echo ""
-echo "[2/2] LowVolt + Benign"
-python3 collect_benign.py "LowVolt_Benign" "${RESULT_DIR}/lowvolt_benign.csv"
+echo "[2/2] Idle + Hot + LowVolt"
+python3 collect_idle.py "Idle_Hot_LowVolt" "${RESULT_DIR}/idle_hot_lowvolt.csv" --hot
+cooldown 180
 
-# 완료
 echo ""
 echo "========================================"
-echo "Low Voltage Experiments Complete!"
+echo "Complete!"
 echo "========================================"
+ls -lh "$RESULT_DIR"/idle_*lowvolt.csv
 echo ""
-ls -lh "$RESULT_DIR"/*.csv
-echo ""
-for file in "$RESULT_DIR"/*.csv; do
+for file in "$RESULT_DIR"/idle_*lowvolt.csv; do
     FLIPS=$(awk -F',' 'NR>1 {sum+=$9} END {print sum}' "$file")
     echo "$(basename $file): $FLIPS flips"
 done
 echo ""
-echo "[+] Step 4 complete!"
+echo "[+] Idle (Low Voltage) complete!"
 echo ""
-echo "To restore normal voltage:"
-echo "  1. sudo ./set_voltage.sh"
-echo "  2. Enter 0"
-echo "  3. Reboot"
+echo "========================================"
+echo "All Experiments Complete!"
+echo "========================================"
+echo ""
+echo "Restore normal voltage:"
+echo "  1. sudo ./set_voltage.sh (enter 0)"
+echo "  2. sudo reboot"
+echo ""
+echo "All results in: results/"
+ls -lh results/*.csv

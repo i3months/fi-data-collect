@@ -110,3 +110,25 @@ sudo ./rowhammer 120 3 3
        `stress-ng`로 CPU 온도를 84도 이상으로 높인 후 실험을 수행하고 결과를 `result_high.csv`에 저장합니다.
 
 스크립트 내부의 `DURATION` 변수를 수정하여 실험 시간을 조절할 수 있습니다 (기본값: 120초).
+
+
+...
+
+
+# Phase 1: 정상 전압
+sudo ./run_1_attack_normal.sh
+sudo ./run_2_benign_normal.sh
+sudo ./run_3_idle_normal.sh
+
+# Phase 2: 저전압 설정
+sudo ./set_voltage.sh  # -2 입력
+sudo reboot
+
+# Phase 3: 저전압 실험
+sudo ./run_4_attack_lowvolt.sh
+sudo ./run_5_benign_lowvolt.sh
+sudo ./run_6_idle_lowvolt.sh
+
+# Phase 4: 전압 복구
+sudo ./set_voltage.sh  # 0 입력
+sudo reboot

@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# STEP 2: Benign Experiments
-# - Benign + Normal
-# - Benign + Hot
+# Idle Experiments - Normal Voltage
+# 1. Idle + Normal
+# 2. Idle + Hot
 
 set -e
 
 echo "========================================"
-echo "STEP 2: Benign Experiments"
+echo "Idle Experiments (Normal Voltage)"
 echo "========================================"
 echo ""
-echo "This will run:"
-echo "  1. Benign + Normal"
-echo "  2. Benign + Hot"
+echo "This will collect:"
+echo "  1. Idle + Normal"
+echo "  2. Idle + Hot"
 echo ""
 echo "Estimated time: 15-20 minutes"
 echo ""
@@ -21,14 +21,12 @@ if [[ "$CONFIRM" != "y" ]]; then
     exit 0
 fi
 
-# 결과 디렉토리
-RESULT_DIR="benign_results"
+RESULT_DIR="results"
 mkdir -p "$RESULT_DIR"
 echo ""
 echo "[*] Results will be saved to: $RESULT_DIR"
 echo ""
 
-# 쿨다운 함수
 cooldown() {
     local DURATION=$1
     echo ""
@@ -41,29 +39,34 @@ cooldown() {
     echo ""
 }
 
-# Benign + Normal
 echo ""
-echo "[1/2] Benign + Normal"
-python3 collect_benign.py "Benign_Normal" "${RESULT_DIR}/benign_normal.csv"
+echo "[1/2] Idle + Normal"
+python3 collect_idle.py "Idle_Normal" "${RESULT_DIR}/idle_normal.csv"
 cooldown 180
 
-# Benign + Hot
 echo ""
-echo "[2/2] Benign + Hot"
-python3 collect_benign.py "Benign_Hot" "${RESULT_DIR}/benign_hot.csv" --hot
+echo "[2/2] Idle + Hot"
+python3 collect_idle.py "Idle_Hot" "${RESULT_DIR}/idle_hot.csv" --hot
+cooldown 180
 
-# 완료
 echo ""
 echo "========================================"
-echo "Benign Experiments Complete!"
+echo "Complete!"
 echo "========================================"
+ls -lh "$RESULT_DIR"/idle_*.csv
 echo ""
-ls -lh "$RESULT_DIR"/*.csv
-echo ""
-for file in "$RESULT_DIR"/*.csv; do
+for file in "$RESULT_DIR"/idle_*.csv; do
     FLIPS=$(awk -F',' 'NR>1 {sum+=$9} END {print sum}' "$file")
     echo "$(basename $file): $FLIPS flips"
 done
 echo ""
-echo "[+] Step 2 complete!"
-echo "[*] Next: sudo ./run_3_idle.sh"
+echo "[+] Idle (Normal Voltage) complete!"
+echo ""
+echo "========================================"
+echo "Normal Voltage Experiments Done!"
+echo "========================================"
+echo ""
+echo "Next: Low Voltage Experiments"
+echo "  1. sudo ./set_voltage.sh (enter -2)"
+echo "  2. sudo reboot"
+echo "  3. sudo ./run_4_attack_lowvolt.sh"
