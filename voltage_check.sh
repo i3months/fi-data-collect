@@ -1,0 +1,6 @@
+vcgencmd measure_volts core
+vcgencmd measure_volts sdram_c
+vcgencmd measure_volts sdram_i
+vcgencmd measure_volts sdram_p
+vcgencmd get_config over_voltage
+vcgencmd get_config force_turbo
