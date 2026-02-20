@@ -65,7 +65,7 @@ def heat_to_target(target_temp):
         except subprocess.TimeoutExpired:
             stress_proc.kill()
 
-def run_single_cycle(workload, benchmark, cycle_num, is_hot):
+def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns):
     """Run a single 20-second collection cycle"""
     print(f"\n[Cycle {cycle_num}] {workload} + {benchmark}")
     
@@ -100,6 +100,7 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot):
     
     # Collect data for CYCLE_DURATION
     start_time = time.time()
+    cycle_start_ns = time.time_ns()
     perf_rows = []
     current_metrics = {}
     last_perf_timestamp = None
@@ -128,9 +129,13 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot):
                 if last_perf_timestamp is not None and perf_ts_rel != last_perf_timestamp:
                     t_env, v_core = get_env_data()
                     ts_ns = time.time_ns()
+                    relative_time_ms = (ts_ns - experiment_start_ns) / 1_000_000
+                    cycle_relative_ms = (ts_ns - cycle_start_ns) / 1_000_000
                     
                     perf_rows.append({
                         "Timestamp_ns": ts_ns,
+                        "RelativeTime_ms": relative_time_ms,
+                        "CycleTime_ms": cycle_relative_ms,
                         "Cycle": cycle_num,
                         "Temp": t_env,
                         "CoreVolt": v_core,
@@ -266,6 +271,9 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
     print(f"Output: {output_file}")
     print(f"{'='*60}\n")
     
+    # Experiment start time for relative timestamps
+    experiment_start_ns = time.time_ns()
+    
     # Heat if needed
     if is_hot:
         heat_to_target(TEMP_THRESHOLD)
@@ -275,7 +283,7 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
     cycle_flips = {}  # Track flips per cycle
     
     for cycle in range(1, num_cycles + 1):
-        rows, flips = run_single_cycle(workload, benchmark, cycle, is_hot)
+        rows, flips = run_single_cycle(workload, benchmark, cycle, is_hot, experiment_start_ns)
         cycle_flips[cycle] = flips
         all_rows.extend(rows)
         
@@ -288,13 +296,16 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
     file_exists = os.path.isfile(output_file)
     with open(output_file, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Timestamp_ns", "Label", "Benchmark", "Cycle", "Temp", "CoreVolt", 
+        writer.writerow(["Timestamp_ns", "RelativeTime_ms", "CycleTime_ms", "Label", "Benchmark", 
+                        "Cycle", "Temp", "CoreVolt", 
                         "CacheMiss", "CacheRef", "PageFault", "BranchMiss", "FlipCount"])
         
         for row in all_rows:
             cycle_num = row["Cycle"]
             writer.writerow([
                 row["Timestamp_ns"],
+                row["RelativeTime_ms"],
+                row["CycleTime_ms"],
                 label,
                 benchmark,
                 cycle_num,
