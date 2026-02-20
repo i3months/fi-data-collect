@@ -89,9 +89,7 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
         flip_log_file = open(flip_log_path, "w")
         workload_cmd = ["sudo", "taskset", "-c", TARGET_CORE, "./rowhammer", str(CYCLE_DURATION), "3", "3"]
         workload_proc = subprocess.Popen(workload_cmd, stdout=flip_log_file, stderr=subprocess.STDOUT, text=True)
-    elif workload == "Benign":
-        workload_cmd = ["sudo", "taskset", "-c", TARGET_CORE, "./benign_workload", str(CYCLE_DURATION)]
-        workload_proc = subprocess.Popen(workload_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    # Benign: MiBench only (no additional workload)
     # Idle: no workload
     
     # Start perf monitoring
@@ -184,7 +182,6 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
         # Cleanup zombie processes
         # Cleanup all processes
         subprocess.run(["sudo", "pkill", "-9", "rowhammer"], stderr=subprocess.DEVNULL)
-        subprocess.run(["sudo", "pkill", "-9", "benign_workload"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
         
         # Cleanup all MiBench processes
