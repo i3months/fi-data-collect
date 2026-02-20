@@ -16,7 +16,7 @@
 
 // Number of cycles for each pair to hammer
 // Tunable: Higher might cause more flips but takes longer.
-#define HAMMER_CYCLES 1000000 
+#define HAMMER_CYCLES 10000  // Reduced to 1/100 to make attack subtle 
 
 // Size of the memory chunk to allocate. 
 // 256MB. RPi 4 has plenty of RAM.
