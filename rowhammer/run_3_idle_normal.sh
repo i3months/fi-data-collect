@@ -21,7 +21,7 @@ if [[ "$CONFIRM" != "y" ]]; then
     exit 0
 fi
 
-RESULT_DIR="results"
+RESULT_DIR="results_v2"
 mkdir -p "$RESULT_DIR"
 echo ""
 echo "[*] Results will be saved to: $RESULT_DIR"
