@@ -1,1 +1,32 @@
 /.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.log
+*.csv
+*.zip
+
+# Visualization outputs
+visualize/*.png
+visualize/*.txt
+visualize/results/
