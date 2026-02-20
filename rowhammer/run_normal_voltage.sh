@@ -61,7 +61,7 @@ for bench in "${BENCHMARKS[@]}"; do
     echo ""
     echo "[Attack] $bench (Normal Temp)"
     python3 collect_cycle.py Attack "$bench" "$RESULT_DIR/Normal_Normal/Attack_${bench}.csv" --cycles 9
-    sleep 10
+    sleep 30
 done
 
 # Benign experiments (6 cycles each)
@@ -69,7 +69,7 @@ for bench in "${BENCHMARKS[@]}"; do
     echo ""
     echo "[Benign] $bench (Normal Temp)"
     python3 collect_cycle.py Benign "$bench" "$RESULT_DIR/Normal_Normal/Benign_${bench}.csv" --cycles 6
-    sleep 10
+    sleep 30
 done
 
 # Idle experiment (6 cycles)
@@ -97,7 +97,7 @@ for bench in "${BENCHMARKS[@]}"; do
     echo ""
     echo "[Attack] $bench (Hot Temp)"
     python3 collect_cycle.py Attack "$bench" "$RESULT_DIR/Normal_Hot/Attack_${bench}.csv" --cycles 9 --hot
-    sleep 10
+    sleep 30
 done
 
 # Benign experiments (6 cycles each)
@@ -105,7 +105,7 @@ for bench in "${BENCHMARKS[@]}"; do
     echo ""
     echo "[Benign] $bench (Hot Temp)"
     python3 collect_cycle.py Benign "$bench" "$RESULT_DIR/Normal_Hot/Benign_${bench}.csv" --cycles 6 --hot
-    sleep 10
+    sleep 30
 done
 
 # Idle experiment (6 cycles)

@@ -39,7 +39,7 @@ def heat_to_target(target_temp):
     """Heat CPU to target temperature"""
     print(f"[*] Heating CPU to {target_temp}°C...")
     stress_proc = subprocess.Popen(
-        ["stress-ng", "--cpu", "4", "--timeout", "2h"],
+        ["stress-ng", "--cpu", "4", "--timeout", "10h"],  # Increased to 10 hours
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -107,7 +107,7 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot):
     print(f"[*] Collecting for {CYCLE_DURATION} seconds...")
     
     try:
-        while time.time() - start_time < CYCLE_DURATION + 2:
+        while time.time() - start_time < CYCLE_DURATION:
             line = perf_proc.stderr.readline()
             if not line:
                 break
@@ -177,11 +177,23 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot):
                 mibench_proc.kill()
         
         # Cleanup zombie processes
+        # Cleanup all processes
         subprocess.run(["sudo", "pkill", "-9", "rowhammer"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "benign_workload"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
+        
+        # Cleanup all MiBench processes
         subprocess.run(["sudo", "pkill", "-9", "susan"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "qsort_large"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "qsort_small"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "bitcnts"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "dijkstra_small"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "sha"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "fft"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "crc"], stderr=subprocess.DEVNULL)
+        
+        # Cleanup shell script
+        subprocess.run(["sudo", "pkill", "-9", "-f", "run_mibench_loop.sh"], stderr=subprocess.DEVNULL)
     
     # Process flips for Attack
     flip_count = 0
@@ -202,12 +214,29 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot):
 def cooldown(duration, is_hot=False, max_temp=55.0):
     """Cooldown between cycles with temperature monitoring"""
     if is_hot:
-        # Hot experiments: fixed cooldown
-        print(f"\n[*] Cooling down for {duration} seconds...")
-        for i in range(duration, 0, -1):
+        # Hot experiments: wait until temp drops below 75°C or minimum 60s
+        print(f"\n[*] Cooling down (Hot mode)...")
+        min_duration = duration
+        elapsed = 0
+        
+        for i in range(min_duration, 0, -1):
             temp, _ = get_env_data()
             print(f"\r    Remaining: {i}s | Temp: {temp:.2f}°C   ", end="", flush=True)
             time.sleep(1)
+            elapsed += 1
+        
+        # Continue cooling if still above 75°C
+        while True:
+            temp, _ = get_env_data()
+            if temp < 75.0:
+                print(f"\n[+] Temperature OK: {temp:.2f}°C < 75°C")
+                break
+            if elapsed > 300:  # Max 5 minutes total
+                print(f"\n[!] WARNING: Cooldown timeout. Current temp: {temp:.2f}°C")
+                break
+            print(f"\r    Extended cooling... {elapsed}s | Temp: {temp:.2f}°C (waiting for < 75°C)   ", end="", flush=True)
+            time.sleep(1)
+            elapsed += 1
         print()
     else:
         # Normal Temp experiments: wait until temp drops below max_temp
@@ -243,12 +272,12 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
     
     # Collect cycles
     all_rows = []
-    total_flips = 0
+    cycle_flips = {}  # Track flips per cycle
     
     for cycle in range(1, num_cycles + 1):
         rows, flips = run_single_cycle(workload, benchmark, cycle, is_hot)
+        cycle_flips[cycle] = flips
         all_rows.extend(rows)
-        total_flips += flips
         
         if cycle < num_cycles:
             cooldown(COOLDOWN_DURATION, is_hot=is_hot, max_temp=55.0)
@@ -263,23 +292,27 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
                         "CacheMiss", "CacheRef", "PageFault", "BranchMiss", "FlipCount"])
         
         for row in all_rows:
+            cycle_num = row["Cycle"]
             writer.writerow([
                 row["Timestamp_ns"],
                 label,
                 benchmark,
-                row["Cycle"],
+                cycle_num,
                 row["Temp"],
                 row["CoreVolt"],
                 row["cache-misses"],
                 row["cache-references"],
                 row["page-faults"],
                 row["branch-misses"],
-                total_flips if workload == "Attack" else 0
+                cycle_flips.get(cycle_num, 0) if workload == "Attack" else 0
             ])
     
+    total_flips = sum(cycle_flips.values())
     print(f"\n[+] Experiment complete!")
     print(f"    Total samples: {len(all_rows)}")
     print(f"    Total flips: {total_flips}")
+    if workload == "Attack":
+        print(f"    Flips per cycle: {cycle_flips}")
     print(f"    Saved to: {output_file}\n")
 
 if __name__ == "__main__":

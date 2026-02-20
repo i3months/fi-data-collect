@@ -53,7 +53,7 @@ while [ $(($(date +%s) - START_TIME)) -lt $DURATION ]; do
             cd - > /dev/null
             ;;
         "CRC32")
-            cd $MIBENCH_DIR/telecomm/CRC32 && ./crc < large.pcm > /dev/null 2>&1
+            cd $MIBENCH_DIR/telecomm/CRC32 && ./crc ../adpcm/data/large.pcm > /dev/null 2>&1
             cd - > /dev/null
             ;;
         *)
