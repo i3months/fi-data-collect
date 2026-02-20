@@ -77,9 +77,10 @@ def run_benign_collection(label, output_file, is_hot=False):
     )
 
     # 3. Perf 명령어 실행 (-I 100: 100ms 간격)
+    # -a: 전체 시스템 모니터링
     perf_cmd = [
         "sudo", "perf", "stat",
-        "-C", TARGET_CORE,
+        "-a",  # All CPUs
         "-e", PERF_EVENTS,
         "-I", "100"
     ]
@@ -138,13 +139,32 @@ def run_benign_collection(label, output_file, is_hot=False):
         print("\n[*] Stopping collection...")
     finally:
         print("\n[*] Finalizing processes...")
+        
+        # Perf 종료
         process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+        
+        # Benign 프로세스 종료
         benign_proc.terminate()
-        benign_proc.wait()
-
+        try:
+            benign_proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            benign_proc.kill()
+        
+        # Stress 종료
         if stress_proc:
             stress_proc.terminate()
-            stress_proc.wait()
+            try:
+                stress_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                stress_proc.kill()
+        
+        # 좀비 프로세스 정리
+        subprocess.run(["sudo", "pkill", "-9", "benign_workload"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
 
         # 4. CSV 작성 (FlipCount는 항상 0)
         file_exists = os.path.isfile(output_file)

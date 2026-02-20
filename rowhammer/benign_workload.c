@@ -9,7 +9,7 @@
 // RowHammer와 유사한 메모리 접근 패턴이지만 공격은 하지 않음
 // 단순히 메모리를 읽고 쓰는 작업만 수행
 
-#define CHUNK_SIZE (256 * 1024 * 1024)  // 256MB
+#define CHUNK_SIZE (4 * 1024 * 1024)  // 4MB (캐시에 맞는 크기)
 #define PAGE_SIZE 4096
 #define ITERATIONS 1000000  // 메모리 접근 반복 횟수
 

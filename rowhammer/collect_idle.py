@@ -34,11 +34,9 @@ def run_idle_collection(label, output_file, is_hot=False):
     # 1. 고온 환경 조성 (Hot 옵션 시)
     if is_hot:
         print(f"[*] Hot mode enabled. Heating up CPU to {TEMP_THRESHOLD}°C...")
-        # Idle 상태에서도 높은 온도 유지를 위해 더 강한 stress 사용
-        # --cpu 4: 4개 코어 모두 사용
-        # --cpu-load 100: 100% 로드
+        # 모든 스크립트에서 동일한 stress-ng 설정 사용
         stress_proc = subprocess.Popen(
-            ["stress-ng", "--cpu", "4", "--cpu-load", "100", "--timeout", "2h"], 
+            ["stress-ng", "--cpu", "4", "--timeout", "2h"], 
             stdout=subprocess.DEVNULL, 
             stderr=subprocess.DEVNULL
         )
@@ -63,20 +61,25 @@ def run_idle_collection(label, output_file, is_hot=False):
             return
 
     print(f"[*] Starting Idle Data Collection: {label}")
-    print(f"[*] Monitoring Core {TARGET_CORE} for {DURATION} seconds...")
-    print(f"[*] System in IDLE state on Core {TARGET_CORE} - NO workload on monitored core")
+    print(f"[*] Monitoring ALL CPUs for {DURATION} seconds...")
+    print(f"[*] System in IDLE state - NO workload")
     
-    if is_hot:
-        print(f"[!] Note: stress-ng continues on ALL cores (100% load) to maintain HIGH temperature")
-        print(f"[!] Core {TARGET_CORE} data is monitored, but stress affects all cores")
-        print(f"[!] Temperature should stay around 80-85°C during collection")
-        # Hot 모드에서는 stress-ng를 계속 실행 (100% 로드로 온도 유지)
+    # Hot 모드에서도 stress-ng 종료 (온도만 높고 작업은 없는 상태)
+    if is_hot and stress_proc:
+        print(f"[*] Stopping stress-ng to achieve true IDLE state...")
+        stress_proc.terminate()
+        try:
+            stress_proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            stress_proc.kill()
+        stress_proc = None
+        print(f"[*] System now in HOT IDLE state (high temp, no workload)")
 
     # 2. Perf 명령어 실행 (-I 100: 100ms 간격)
-    # Idle 상태이므로 특정 코어만 모니터링
+    # Idle 상태이므로 전체 시스템 모니터링
     perf_cmd = [
         "sudo", "perf", "stat",
-        "-C", TARGET_CORE,
+        "-a",  # All CPUs
         "-e", PERF_EVENTS,
         "-I", "100"
     ]
@@ -135,11 +138,24 @@ def run_idle_collection(label, output_file, is_hot=False):
         print("\n[*] Stopping collection...")
     finally:
         print("\n[*] Finalizing processes...")
+        
+        # Perf 종료
         process.terminate()
-
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+        
+        # Stress 종료
         if stress_proc:
             stress_proc.terminate()
-            stress_proc.wait()
+            try:
+                stress_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                stress_proc.kill()
+        
+        # 좀비 프로세스 정리
+        subprocess.run(["sudo", "pkill", "-9", "stress-ng"], stderr=subprocess.DEVNULL)
 
         # 3. CSV 작성 (FlipCount는 항상 0)
         file_exists = os.path.isfile(output_file)

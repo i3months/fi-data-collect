@@ -37,12 +37,23 @@ def run_collection(label, output_file, is_hot=False, attack_type="3"):
     # 1. 고온 환경 조성 (Hot 옵션 시)
     if is_hot:
         print(f"[*] Hot mode enabled. Heating up CPU to {TEMP_THRESHOLD}°C...")
-        stress_proc = subprocess.Popen(["stress-ng", "--cpu", "4", "--timeout", "1h"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        stress_proc = subprocess.Popen(
+            ["stress-ng", "--cpu", "4", "--timeout", "2h"], 
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.DEVNULL
+        )
         try:
             while True:
                 temp, _ = get_env_data()
                 if temp >= TEMP_THRESHOLD:
                     print(f"\n[!] Target temperature reached: {temp:.2f}°C")
+                    print(f"[*] Waiting additional 60 seconds to stabilize temperature...")
+                    # 온도 안정화 대기 (60초)
+                    for i in range(60, 0, -1):
+                        temp_now, _ = get_env_data()
+                        print(f"\r    Stabilizing... {i}s remaining | Current: {temp_now:.2f}°C", end="", flush=True)
+                        time.sleep(1)
+                    print()
                     break
                 print(f"\r    Current Temp: {temp:.2f}°C / Target: {TEMP_THRESHOLD}°C", end="", flush=True)
                 time.sleep(2)
@@ -67,9 +78,10 @@ def run_collection(label, output_file, is_hot=False, attack_type="3"):
     attacker = subprocess.Popen(attacker_cmd, stdout=flip_log_file, stderr=subprocess.STDOUT, text=True)
 
     # 2. Perf 명령어 실행 (-I 100: 100ms 간격)
+    # -a: 전체 시스템 모니터링 (Core 3만이 아닌 모든 메모리 접근 포함)
     perf_cmd = [
         "sudo", "perf", "stat",
-        "-C", TARGET_CORE,
+        "-a",  # All CPUs
         "-e", PERF_EVENTS,
         "-I", "100"
     ]
@@ -129,16 +141,37 @@ def run_collection(label, output_file, is_hot=False, attack_type="3"):
         print("\n[*] Stopping collection...")
     finally:
         print("\n[*] Finalizing processes and cleaning up...")
-        process.terminate()
         
-        # RowHammer 프로세스 종료 대기
-        attacker.wait()
+        # Perf 종료
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+        
+        # RowHammer 프로세스 종료 (좀비 방지)
+        try:
+            attacker.terminate()
+            attacker.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            print("[!] RowHammer process timeout, force killing...")
+            attacker.kill()
+            attacker.wait()
+        
         flip_log_file.flush()
         flip_log_file.close()
-
+        
+        # Stress 종료
         if stress_proc:
             stress_proc.terminate()
-            stress_proc.wait()
+            try:
+                stress_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                stress_proc.kill()
+        
+        # 좀비 프로세스 정리
+        subprocess.run(["sudo", "pkill", "-9", "rowhammer"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
 
         # 3. 저장된 플립 로그 파일 다시 읽기 및 병합
         print(f"[*] Processing flips from {flip_log_path}...")
