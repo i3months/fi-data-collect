@@ -56,9 +56,9 @@ echo ""
 echo "[4/7] Compiling dijkstra..."
 cd "$MIBENCH_DIR/network/dijkstra"
 if [ -f dijkstra.c ]; then
-    gcc -O3 -o dijkstra_small dijkstra.c 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o dijkstra_small dijkstra.c 2>&1 | grep -v "warning:" || true
 elif [ -f dijkstra_small.c ]; then
-    gcc -O3 -o dijkstra_small dijkstra_small.c 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o dijkstra_small dijkstra_small.c 2>&1 | grep -v "warning:" || true
 else
     echo "  ✗ dijkstra source not found"
     exit 1
@@ -75,9 +75,9 @@ echo ""
 echo "[5/7] Compiling sha..."
 cd "$MIBENCH_DIR/security/sha"
 if [ -f sha_driver.c ]; then
-    gcc -O3 -o sha sha.c sha_driver.c 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o sha sha.c sha_driver.c 2>&1 | grep -v "warning:" || true
 else
-    gcc -O3 -o sha sha.c 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o sha sha.c 2>&1 | grep -v "warning:" || true
 fi
 if [ -f sha ]; then
     echo "  ✓ sha compiled successfully"
@@ -91,9 +91,9 @@ echo ""
 echo "[6/7] Compiling FFT..."
 cd "$MIBENCH_DIR/telecomm/FFT"
 if [ -f fft.c ]; then
-    gcc -O3 -o fft fft.c -lm 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o fft fft.c -lm 2>&1 | grep -v "warning:" || true
 elif [ -f fourierf.c ]; then
-    gcc -O3 -o fft fourierf.c -lm 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o fft fourierf.c -lm 2>&1 | grep -v "warning:" || true
 else
     echo "  ✗ FFT source not found"
     exit 1
@@ -110,9 +110,9 @@ echo ""
 echo "[7/7] Compiling CRC32..."
 cd "$MIBENCH_DIR/telecomm/CRC32"
 if [ -f crc_32.c ] && [ -f main.c ]; then
-    gcc -O3 -o crc crc_32.c main.c 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o crc crc_32.c main.c 2>&1 | grep -v "warning:" || true
 elif [ -f crc.c ]; then
-    gcc -O3 -o crc crc.c 2>&1 | grep -v "warning:" || true
+    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o crc crc.c 2>&1 | grep -v "warning:" || true
 else
     echo "  ✗ CRC32 source not found"
     exit 1
