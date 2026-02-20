@@ -62,7 +62,16 @@ def run_idle_collection(label, output_file, is_hot=False):
 
     print(f"[*] Starting Idle Data Collection: {label}")
     print(f"[*] Monitoring ALL CPUs for {DURATION} seconds...")
-    print(f"[*] System in IDLE state - NO workload")
+    print(f"[*] Running MiBench in background, system otherwise IDLE")
+    
+    # MiBench 백그라운드 실행 (노이즈)
+    print(f"[*] Starting MiBench in background...")
+    mibench_proc = subprocess.Popen(
+        ["./run_mibench_loop.sh", str(DURATION), "basicmath"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    time.sleep(1)  # MiBench 시작 대기
     
     # Hot 모드에서도 stress-ng 종료 (온도만 높고 작업은 없는 상태)
     if is_hot and stress_proc:
@@ -73,7 +82,7 @@ def run_idle_collection(label, output_file, is_hot=False):
         except subprocess.TimeoutExpired:
             stress_proc.kill()
         stress_proc = None
-        print(f"[*] System now in HOT IDLE state (high temp, no workload)")
+        print(f"[*] System now in HOT IDLE state (high temp, MiBench only)")
 
     # 2. Perf 명령어 실행 (-I 100: 100ms 간격)
     # Idle 상태이므로 전체 시스템 모니터링
@@ -146,6 +155,14 @@ def run_idle_collection(label, output_file, is_hot=False):
         except subprocess.TimeoutExpired:
             process.kill()
         
+        # MiBench 종료
+        if mibench_proc:
+            mibench_proc.terminate()
+            try:
+                mibench_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                mibench_proc.kill()
+        
         # Stress 종료
         if stress_proc:
             stress_proc.terminate()
@@ -156,6 +173,7 @@ def run_idle_collection(label, output_file, is_hot=False):
         
         # 좀비 프로세스 정리
         subprocess.run(["sudo", "pkill", "-9", "stress-ng"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "basicmath"], stderr=subprocess.DEVNULL)
 
         # 3. CSV 작성 (FlipCount는 항상 0)
         file_exists = os.path.isfile(output_file)

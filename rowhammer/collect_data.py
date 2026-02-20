@@ -6,7 +6,7 @@ import os
 import sys
 
 # --- 설정 ---
-DURATION = 60  # 수집 시간 (초)
+DURATION = 90  # 수집 시간 (초) - Attack은 더 많은 데이터 필요
 TARGET_CORE = "3"
 # perf output에 나오는 이름과 정확히 일치해야 매핑됩니다.
 PERF_EVENTS = "cache-misses,cache-references,page-faults,branch-misses"
@@ -63,8 +63,17 @@ def run_collection(label, output_file, is_hot=False, attack_type="3"):
             return
 
     print(f"[*] Starting Data Collection: {label}")
-    print(f"[*] Monitoring Core {TARGET_CORE} for {DURATION} seconds...")
+    print(f"[*] Monitoring ALL CPUs for {DURATION} seconds...")
     print(f"[*] Attack Config: Mode {ATTACK_MODE}, Type {attack_type}")
+    
+    # MiBench 백그라운드 실행 (현실적인 노이즈 추가)
+    print(f"[*] Starting MiBench (qsort) in background (realistic workload)...")
+    mibench_proc = subprocess.Popen(
+        ["./run_mibench_loop.sh", str(DURATION), "qsort"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    time.sleep(1)  # MiBench 시작 대기
     
     # 공격 결과를 저장할 임시 로그 파일 (버퍼링 문제 해결을 위해 파이프 대신 파일 사용)
     flip_log_path = f"flips_{label}.log"
@@ -169,9 +178,18 @@ def run_collection(label, output_file, is_hot=False, attack_type="3"):
             except subprocess.TimeoutExpired:
                 stress_proc.kill()
         
+        # MiBench 종료
+        if mibench_proc:
+            mibench_proc.terminate()
+            try:
+                mibench_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                mibench_proc.kill()
+        
         # 좀비 프로세스 정리
         subprocess.run(["sudo", "pkill", "-9", "rowhammer"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "basicmath"], stderr=subprocess.DEVNULL)
 
         # 3. 저장된 플립 로그 파일 다시 읽기 및 병합
         print(f"[*] Processing flips from {flip_log_path}...")

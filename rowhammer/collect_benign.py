@@ -60,11 +60,19 @@ def run_benign_collection(label, output_file, is_hot=False):
             return
 
     print(f"[*] Starting Benign Data Collection: {label}")
-    print(f"[*] Monitoring Core {TARGET_CORE} for {DURATION} seconds...")
-    print(f"[*] Running memory-intensive workload WITHOUT RowHammer attack")
+    print(f"[*] Monitoring ALL CPUs for {DURATION} seconds...")
+    print(f"[*] Running MiBench + benign_workload (realistic environment)")
     
-    # 2. Benign 메모리 워크로드 실행 (커스텀 C 프로그램 사용)
-    # RowHammer와 유사한 메모리 접근 패턴이지만 공격은 하지 않음
+    # 2-1. MiBench 백그라운드 실행 (노이즈)
+    print(f"[*] Starting MiBench (qsort) in background...")
+    mibench_proc = subprocess.Popen(
+        ["./run_mibench_loop.sh", str(DURATION), "qsort"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    time.sleep(1)  # MiBench 시작 대기
+    
+    # 2-2. Benign 워크로드 실행 (메인 작업)
     benign_cmd = [
         "sudo", "taskset", "-c", TARGET_CORE,
         "./benign_workload", str(DURATION)
@@ -154,6 +162,14 @@ def run_benign_collection(label, output_file, is_hot=False):
         except subprocess.TimeoutExpired:
             benign_proc.kill()
         
+        # MiBench 종료
+        if mibench_proc:
+            mibench_proc.terminate()
+            try:
+                mibench_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                mibench_proc.kill()
+        
         # Stress 종료
         if stress_proc:
             stress_proc.terminate()
@@ -165,6 +181,7 @@ def run_benign_collection(label, output_file, is_hot=False):
         # 좀비 프로세스 정리
         subprocess.run(["sudo", "pkill", "-9", "benign_workload"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "basicmath"], stderr=subprocess.DEVNULL)
 
         # 4. CSV 작성 (FlipCount는 항상 0)
         file_exists = os.path.isfile(output_file)
