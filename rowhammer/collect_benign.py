@@ -64,9 +64,9 @@ def run_benign_collection(label, output_file, is_hot=False):
     print(f"[*] Running MiBench + benign_workload (realistic environment)")
     
     # 2-1. MiBench 백그라운드 실행 (노이즈)
-    print(f"[*] Starting MiBench (qsort) in background...")
+    print(f"[*] Starting MiBench (susan) in background...")
     mibench_proc = subprocess.Popen(
-        ["./run_mibench_loop.sh", str(DURATION), "qsort"],
+        ["./run_mibench_loop.sh", str(DURATION), "susan"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -181,7 +181,7 @@ def run_benign_collection(label, output_file, is_hot=False):
         # 좀비 프로세스 정리
         subprocess.run(["sudo", "pkill", "-9", "benign_workload"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
-        subprocess.run(["sudo", "pkill", "-9", "basicmath"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "susan"], stderr=subprocess.DEVNULL)
 
         # 4. CSV 작성 (FlipCount는 항상 0)
         file_exists = os.path.isfile(output_file)

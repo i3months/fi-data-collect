@@ -67,9 +67,9 @@ def run_collection(label, output_file, is_hot=False, attack_type="3"):
     print(f"[*] Attack Config: Mode {ATTACK_MODE}, Type {attack_type}")
     
     # MiBench 백그라운드 실행 (현실적인 노이즈 추가)
-    print(f"[*] Starting MiBench (qsort) in background (realistic workload)...")
+    print(f"[*] Starting MiBench (susan) in background (realistic workload)...")
     mibench_proc = subprocess.Popen(
-        ["./run_mibench_loop.sh", str(DURATION), "qsort"],
+        ["./run_mibench_loop.sh", str(DURATION), "susan"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -189,7 +189,7 @@ def run_collection(label, output_file, is_hot=False, attack_type="3"):
         # 좀비 프로세스 정리
         subprocess.run(["sudo", "pkill", "-9", "rowhammer"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "pkill", "-9", "taskset"], stderr=subprocess.DEVNULL)
-        subprocess.run(["sudo", "pkill", "-9", "basicmath"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "susan"], stderr=subprocess.DEVNULL)
 
         # 3. 저장된 플립 로그 파일 다시 읽기 및 병합
         print(f"[*] Processing flips from {flip_log_path}...")

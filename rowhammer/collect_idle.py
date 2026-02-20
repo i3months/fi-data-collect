@@ -65,9 +65,9 @@ def run_idle_collection(label, output_file, is_hot=False):
     print(f"[*] Running MiBench in background, system otherwise IDLE")
     
     # MiBench 백그라운드 실행 (노이즈)
-    print(f"[*] Starting MiBench in background...")
+    print(f"[*] Starting MiBench (susan) in background...")
     mibench_proc = subprocess.Popen(
-        ["./run_mibench_loop.sh", str(DURATION), "basicmath"],
+        ["./run_mibench_loop.sh", str(DURATION), "susan"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -173,7 +173,7 @@ def run_idle_collection(label, output_file, is_hot=False):
         
         # 좀비 프로세스 정리
         subprocess.run(["sudo", "pkill", "-9", "stress-ng"], stderr=subprocess.DEVNULL)
-        subprocess.run(["sudo", "pkill", "-9", "basicmath"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "pkill", "-9", "susan"], stderr=subprocess.DEVNULL)
 
         # 3. CSV 작성 (FlipCount는 항상 0)
         file_exists = os.path.isfile(output_file)
