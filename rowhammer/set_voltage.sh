@@ -15,7 +15,9 @@ fi
 echo "------------------------------------------------"
 echo "[*] 현재 측정 전압: $(vcgencmd measure_volts core)"
 CURRENT_SETTING=$(grep "^over_voltage=" $CONFIG_FILE | cut -d= -f2)
+CURRENT_MIN=$(grep "^over_voltage_min=" $CONFIG_FILE | cut -d= -f2)
 echo "[*] 현재 설정된 over_voltage: ${CURRENT_SETTING:-0 (기본값)}"
+echo "[*] 현재 설정된 over_voltage_min: ${CURRENT_MIN:-0 (기본값)}"
 echo "------------------------------------------------"
 
 # 3. 새로운 값 입력 받기
@@ -37,18 +39,28 @@ if [ "$NEW_VAL" -gt 6 ] || [ "$NEW_VAL" -lt -6 ]; then
 fi
 
 # 4. 설정 적용
-# 이미 설정이 있으면 치환, 없으면 맨 뒤에 추가
+# over_voltage 설정 (이미 있으면 치환, 없으면 추가)
 if grep -q "^over_voltage=" "$CONFIG_FILE"; then
     sudo sed -i "s/^over_voltage=.*/over_voltage=$NEW_VAL/" "$CONFIG_FILE"
 else
     echo "over_voltage=$NEW_VAL" | sudo tee -a "$CONFIG_FILE" > /dev/null
 fi
 
-# 실험의 정확성을 위해 클럭 고정 옵션도 확인/추가
-if ! grep -q "^force_turbo=1" "$CONFIG_FILE"; then
-    echo "force_turbo=1" | sudo tee -a "$CONFIG_FILE" > /dev/null
-    echo "[+] 전압 고정을 위해 force_turbo=1 옵션을 추가했습니다."
+# over_voltage_min 설정 (최소 전압도 동일하게 설정)
+if grep -q "^over_voltage_min=" "$CONFIG_FILE"; then
+    sudo sed -i "s/^over_voltage_min=.*/over_voltage_min=$NEW_VAL/" "$CONFIG_FILE"
+else
+    echo "over_voltage_min=$NEW_VAL" | sudo tee -a "$CONFIG_FILE" > /dev/null
 fi
+echo "[+] over_voltage_min=$NEW_VAL 도 설정했습니다."
+
+# 실험의 정확성을 위해 force_turbo 옵션 설정
+if grep -q "^force_turbo=" "$CONFIG_FILE"; then
+    sudo sed -i "s/^force_turbo=.*/force_turbo=0/" "$CONFIG_FILE"
+else
+    echo "force_turbo=0" | sudo tee -a "$CONFIG_FILE" > /dev/null
+fi
+echo "[+] force_turbo=0 으로 설정했습니다 (동적 전압 조절 비활성화)."
 
 echo "------------------------------------------------"
 echo "[+] 설정이 완료되었습니다! (over_voltage=$NEW_VAL)"
