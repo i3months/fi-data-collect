@@ -90,14 +90,8 @@ fi
 echo ""
 echo "[6/7] Compiling FFT..."
 cd "$MIBENCH_DIR/telecomm/FFT"
-if [ -f fft.c ]; then
-    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o fft fft.c -lm 2>&1 | grep -v "warning:" || true
-elif [ -f fourierf.c ]; then
-    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o fft fourierf.c -lm 2>&1 | grep -v "warning:" || true
-else
-    echo "  ✗ FFT source not found"
-    exit 1
-fi
+# FFT는 여러 파일을 함께 컴파일
+gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o fft main.c fftmisc.c fourierf.c -lm 2>&1 | grep -v "warning:" || true
 if [ -f fft ]; then
     echo "  ✓ fft compiled successfully"
 else
@@ -109,14 +103,8 @@ fi
 echo ""
 echo "[7/7] Compiling CRC32..."
 cd "$MIBENCH_DIR/telecomm/CRC32"
-if [ -f crc_32.c ] && [ -f main.c ]; then
-    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o crc crc_32.c main.c 2>&1 | grep -v "warning:" || true
-elif [ -f crc.c ]; then
-    gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o crc crc.c 2>&1 | grep -v "warning:" || true
-else
-    echo "  ✗ CRC32 source not found"
-    exit 1
-fi
+# CRC32는 crc_32.c에 main이 포함되어 있음
+gcc -O3 -Wno-implicit-int -Wno-implicit-function-declaration -o crc crc_32.c 2>&1 | grep -v "warning:" || true
 if [ -f crc ]; then
     echo "  ✓ crc compiled successfully"
 else
