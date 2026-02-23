@@ -1,22 +1,22 @@
 ## ver1.0
 
-Attack : Rowhammer 공격 실행
-Benign : 정상 메모리 작업 - 공격의도 없이 메모리 순차 읽고쓰기
-Idle : 아무것도 안함 
+- Attack : Rowhammer 공격 실행
+- Benign : 정상 메모리 작업 - 공격의도 없이 메모리 순차 읽고쓰기
+- Idle : 아무것도 안함 
 
 ---
 
 
 ## ver2.0
 
-Attack : mibench(susan/백그) + Rowhammer 공격 실행 / 90초 수집
-Benign : mibench(susan/백그) + 정상 메모리 작업 - 공격의도 없이 메모리 순차 읽고쓰기 / 60초 수집
-Idle : mibench(susan/백그) + 아무것도 안함 / 60초 수집 
+- Attack : mibench(susan/백그) + Rowhammer 공격 실행 / 90초 수집
+- Benign : mibench(susan/백그) + 정상 메모리 작업 - 공격의도 없이 메모리 순차 읽고쓰기 / 60초 수집
+- Idle : mibench(susan/백그) + 아무것도 안함 / 60초 수집 
 
-LowVoltage : -6  / 1,10V (예정)
-NormalVoltage : 0 / 1.25V
-Hot : 80도 언저리
-NormalTemp : 40-55도 사이
+- LowVoltage : -6  / 1,10V
+- NormalVoltage : 0 / 1.25V
+- Hot : 80도 언저리
+- NormalTemp : 40-55도 사이
 
 
 ---
@@ -143,8 +143,7 @@ sudo ./run_low_voltage.sh
 
 ### 저전압 실험
 - 와이파이 불안정할 수 있음
-- 모니터 연결 권장
-- 또는 `sudo iwconfig wlan0 power off`로 와이파이 전원 관리 끄기
+- 모니터 연결해야할수도..
 
 ### 온도 관리
 - Normal Temp 실험: 55°C 초과 시 자동 대기
