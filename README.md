@@ -163,3 +163,16 @@ ls -lh results_v3/Low_Hot/
 # 총 60개 CSV 파일
 find results_v3/ -name "*.csv" | wc -l
 ```
+
+---
+
+## low + hot 만 다시 하려면
+
+```bash
+chmod +x redo_low_hot.sh
+chmod +x *.py
+
+screen -S final
+sudo ./redo_low_hot.sh
+# Ctrl+A, D
+```
