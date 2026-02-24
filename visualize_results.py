@@ -20,11 +20,11 @@ plt.rcParams['axes.unicode_minus'] = False
 sns.set_style("whitegrid")
 sns.set_palette("husl")
 
-def load_all_data(base_path='results_v3'):
+def load_all_data(base_path='rowhammer4/results_02240615'):
     """모든 CSV 파일 로드"""
     all_data = []
     
-    folders = ['Normal_Normal', 'Normal_Hot', 'Low_Normal']
+    folders = ['Normal_Normal', 'Normal_Hot', 'Low_Normal', 'Low_Hot']
     
     for folder in folders:
         folder_path = Path(base_path) / folder
@@ -56,7 +56,7 @@ def load_all_data(base_path='results_v3'):
 def plot_overview(df):
     """전체 데이터 개요"""
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('RowHammer Experiment Overview (45 Files)', fontsize=16, fontweight='bold')
+    fig.suptitle('RowHammer Experiment Overview (60 Files)', fontsize=16, fontweight='bold')
     
     # 1. 파일 개수
     file_counts = df.groupby(['Voltage', 'Temperature', 'Label']).size().unstack(fill_value=0)

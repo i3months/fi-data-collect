@@ -278,42 +278,48 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
     # Collect cycles
     all_rows = []
     cycle_flips = {}  # Track flips per cycle
-    
-    for cycle in range(1, num_cycles + 1):
-        rows, flips = run_single_cycle(workload, benchmark, cycle, is_hot, experiment_start_ns)
-        cycle_flips[cycle] = flips
-        all_rows.extend(rows)
-        
-        if cycle < num_cycles:
-            cooldown(COOLDOWN_DURATION, is_hot=is_hot, max_temp=55.0)
-    
-    # Write to CSV
     label = f"{workload}_{benchmark}" if benchmark != "None" else workload
     
-    file_exists = os.path.isfile(output_file)
+    # Initialize CSV file with header
     with open(output_file, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["Timestamp_ns", "RelativeTime_ms", "CycleTime_ms", "Label", "Benchmark", 
                         "Cycle", "Temp", "CoreVolt", 
                         "CacheMiss", "CacheRef", "PageFault", "BranchMiss", "FlipCount"])
+    
+    for cycle in range(1, num_cycles + 1):
+        # Heat to target temperature before each cycle if in hot mode
+        if is_hot:
+            heat_to_target(TEMP_THRESHOLD)
         
-        for row in all_rows:
-            cycle_num = row["Cycle"]
-            writer.writerow([
-                row["Timestamp_ns"],
-                row["RelativeTime_ms"],
-                row["CycleTime_ms"],
-                label,
-                benchmark,
-                cycle_num,
-                row["Temp"],
-                row["CoreVolt"],
-                row["cache-misses"],
-                row["cache-references"],
-                row["page-faults"],
-                row["branch-misses"],
-                cycle_flips.get(cycle_num, 0) if workload == "Attack" else 0
-            ])
+        rows, flips = run_single_cycle(workload, benchmark, cycle, is_hot, experiment_start_ns)
+        cycle_flips[cycle] = flips
+        all_rows.extend(rows)
+        
+        # SAVE IMMEDIATELY after each cycle (append mode)
+        with open(output_file, "a", newline="") as f:
+            writer = csv.writer(f)
+            for row in rows:
+                writer.writerow([
+                    row["Timestamp_ns"],
+                    row["RelativeTime_ms"],
+                    row["CycleTime_ms"],
+                    label,
+                    benchmark,
+                    cycle,
+                    row["Temp"],
+                    row["CoreVolt"],
+                    row["cache-misses"],
+                    row["cache-references"],
+                    row["page-faults"],
+                    row["branch-misses"],
+                    flips if workload == "Attack" else 0
+                ])
+        
+        print(f"[+] Cycle {cycle} data saved to {output_file}")
+        
+        if cycle < num_cycles:
+            cooldown(COOLDOWN_DURATION, is_hot=is_hot, max_temp=55.0)
     
     total_flips = sum(cycle_flips.values())
     print(f"\n[+] Experiment complete!")
