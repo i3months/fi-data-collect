@@ -271,7 +271,7 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
     
     return perf_rows, flip_count
 
-def cooldown(duration, is_hot=False, max_temp=50.0):
+def cooldown(duration, is_hot=False, max_temp=55.0):
     """Cooldown between cycles with temperature monitoring"""
     if is_hot:
         # Hot experiments: wait until temp drops below 70°C or minimum duration
@@ -377,7 +377,7 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
         print(f"[+] Cycle {cycle} data saved to {output_file}")
         
         if cycle < num_cycles:
-            cooldown(COOLDOWN_DURATION, is_hot=is_hot, max_temp=50.0)
+            cooldown(COOLDOWN_DURATION, is_hot=is_hot, max_temp=55.0)
     
     total_flips = sum(cycle_flips.values())
     print(f"\n[+] Experiment complete!")
