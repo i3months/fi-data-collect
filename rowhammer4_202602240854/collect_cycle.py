@@ -11,10 +11,11 @@ import re
 import os
 import sys
 import argparse
+import random
 
 # --- Configuration ---
 CYCLE_DURATION = 20  # 20 seconds per cycle
-COOLDOWN_DURATION = 60  # 60 seconds cooldown between cycles
+COOLDOWN_DURATION = 30  # 30 seconds cooldown (reduced from 60)
 PERF_EVENTS = "cache-misses,cache-references,page-faults,branch-misses"
 TARGET_CORE = "3"
 
@@ -49,8 +50,8 @@ def heat_to_target(target_temp):
             temp, _ = get_env_data()
             if temp >= target_temp:
                 print(f"\n[!] Target temperature reached: {temp:.2f}°C")
-                print(f"[*] Stabilizing for 60 seconds...")
-                for i in range(60, 0, -1):
+                print(f"[*] Stabilizing for 20 seconds...")
+                for i in range(20, 0, -1):
                     temp_now, _ = get_env_data()
                     print(f"\r    Stabilizing... {i}s | Temp: {temp_now:.2f}°C", end="", flush=True)
                     time.sleep(1)
@@ -69,6 +70,13 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
     """Run a single 20-second collection cycle"""
     print(f"\n[Cycle {cycle_num}] {workload} + {benchmark}")
     
+    # Randomly select attack start time (0-15 seconds, leaving 5 seconds for attack)
+    attack_start_offset = random.uniform(0, 15) if workload == "Attack" else None
+    attack_duration = 5
+    
+    if attack_start_offset is not None:
+        print(f"[*] Attack scheduled: {attack_start_offset:.1f}s ~ {attack_start_offset + attack_duration:.1f}s")
+    
     # Start continuous heating for hot mode (keeps temp at 80C during collection)
     stress_proc = None
     if is_hot:
@@ -78,7 +86,7 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-        time.sleep(2)  # Let heating stabilize
+        time.sleep(1)  # Let heating stabilize (reduced from 2s)
     
     # Start MiBench
     mibench_proc = None
@@ -89,17 +97,16 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-        time.sleep(1)
+        time.sleep(0.5)  # Reduced from 1s
     
-    # Start workload
+    # Start workload (Attack will be started at random time)
     workload_proc = None
     flip_log_file = None
+    attack_start_time = None
     
     if workload == "Attack":
         flip_log_path = f"flips_temp_{cycle_num}.log"
         flip_log_file = open(flip_log_path, "w")
-        workload_cmd = ["sudo", "taskset", "-c", TARGET_CORE, "./rowhammer", str(CYCLE_DURATION), "3", "3"]
-        workload_proc = subprocess.Popen(workload_cmd, stdout=flip_log_file, stderr=subprocess.STDOUT, text=True)
     # Benign: MiBench only (no additional workload)
     # Idle: no workload
     
@@ -114,10 +121,24 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
     current_metrics = {}
     last_perf_timestamp = None
     
+    # Track bitflips: map timestamp_ns -> flip count at that moment
+    flip_by_timestamp = {}  # {timestamp_ns: count_of_flips_at_that_time}
+    last_flip_count = 0  # Track total flips seen so far
+    
     print(f"[*] Collecting for {CYCLE_DURATION} seconds...")
     
     try:
         while time.time() - start_time < CYCLE_DURATION:
+            elapsed = time.time() - start_time
+            
+            # Start rowhammer attack at random time (runs for 5 seconds)
+            if workload == "Attack" and workload_proc is None and elapsed >= attack_start_offset:
+                print(f"[*] Starting RowHammer attack now! ({attack_duration} seconds)")
+                workload_cmd = ["sudo", "taskset", "-c", TARGET_CORE, "./rowhammer", str(attack_duration), "3", "3"]
+                workload_proc = subprocess.Popen(workload_cmd, stdout=flip_log_file, stderr=subprocess.STDOUT, text=True)
+                attack_start_time = time.time()
+            
+            # Continue collecting perf data
             line = perf_proc.stderr.readline()
             if not line:
                 break
@@ -141,6 +162,22 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
                     relative_time_ms = (ts_ns - experiment_start_ns) / 1_000_000
                     cycle_relative_ms = (ts_ns - cycle_start_ns) / 1_000_000
                     
+                    # Count NEW flips since last measurement (for Attack workload)
+                    new_flips_in_this_interval = 0
+                    if workload == "Attack" and os.path.exists(flip_log_path):
+                        try:
+                            current_total_flips = 0
+                            with open(flip_log_path, "r") as f_check:
+                                for line in f_check:
+                                    if line.startswith("FLIP,"):
+                                        current_total_flips += 1
+                            
+                            # Calculate increment: new flips since last check
+                            new_flips_in_this_interval = current_total_flips - last_flip_count
+                            last_flip_count = current_total_flips
+                        except:
+                            pass
+                    
                     perf_rows.append({
                         "Timestamp_ns": ts_ns,
                         "RelativeTime_ms": relative_time_ms,
@@ -151,7 +188,8 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
                         "cache-misses": current_metrics.get("cache-misses", 0),
                         "cache-references": current_metrics.get("cache-references", 0),
                         "page-faults": current_metrics.get("page-faults", 0),
-                        "branch-misses": current_metrics.get("branch-misses", 0)
+                        "branch-misses": current_metrics.get("branch-misses", 0),
+                        "FlipCount": new_flips_in_this_interval
                     })
                     
                     current_metrics = {}
@@ -233,10 +271,10 @@ def run_single_cycle(workload, benchmark, cycle_num, is_hot, experiment_start_ns
     
     return perf_rows, flip_count
 
-def cooldown(duration, is_hot=False, max_temp=55.0):
+def cooldown(duration, is_hot=False, max_temp=50.0):
     """Cooldown between cycles with temperature monitoring"""
     if is_hot:
-        # Hot experiments: wait until temp drops below 75°C or minimum 60s
+        # Hot experiments: wait until temp drops below 70°C or minimum duration
         print(f"\n[*] Cooling down (Hot mode)...")
         min_duration = duration
         elapsed = 0
@@ -247,16 +285,16 @@ def cooldown(duration, is_hot=False, max_temp=55.0):
             time.sleep(1)
             elapsed += 1
         
-        # Continue cooling if still above 75°C
+        # Continue cooling if still above 70°C (reduced from 75°C)
         while True:
             temp, _ = get_env_data()
-            if temp < 75.0:
-                print(f"\n[+] Temperature OK: {temp:.2f}°C < 75°C")
+            if temp < 70.0:
+                print(f"\n[+] Temperature OK: {temp:.2f}°C < 70°C")
                 break
-            if elapsed > 300:  # Max 5 minutes total
+            if elapsed > 180:  # Max 3 minutes total (reduced from 5 min)
                 print(f"\n[!] WARNING: Cooldown timeout. Current temp: {temp:.2f}°C")
                 break
-            print(f"\r    Extended cooling... {elapsed}s | Temp: {temp:.2f}°C (waiting for < 75°C)   ", end="", flush=True)
+            print(f"\r    Extended cooling... {elapsed}s | Temp: {temp:.2f}°C (waiting for < 70°C)   ", end="", flush=True)
             time.sleep(1)
             elapsed += 1
         print()
@@ -273,9 +311,9 @@ def cooldown(duration, is_hot=False, max_temp=55.0):
             time.sleep(1)
             elapsed += 1
             
-            # Safety: max 5 minutes
-            if elapsed > 300:
-                print(f"\n[!] WARNING: Cooldown timeout (5 min). Current temp: {temp:.2f}°C")
+            # Safety: max 3 minutes (reduced from 5 min)
+            if elapsed > 180:
+                print(f"\n[!] WARNING: Cooldown timeout (3 min). Current temp: {temp:.2f}°C")
                 break
         print()
 
@@ -333,13 +371,13 @@ def collect_experiment(workload, benchmark, output_file, num_cycles, is_hot=Fals
                     row["cache-references"],
                     row["page-faults"],
                     row["branch-misses"],
-                    flips if workload == "Attack" else 0
+                    row.get("FlipCount", 0)  # Use the per-timestamp flip count
                 ])
         
         print(f"[+] Cycle {cycle} data saved to {output_file}")
         
         if cycle < num_cycles:
-            cooldown(COOLDOWN_DURATION, is_hot=is_hot, max_temp=55.0)
+            cooldown(COOLDOWN_DURATION, is_hot=is_hot, max_temp=50.0)
     
     total_flips = sum(cycle_flips.values())
     print(f"\n[+] Experiment complete!")
