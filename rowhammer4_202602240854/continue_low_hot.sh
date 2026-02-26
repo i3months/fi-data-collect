@@ -1,16 +1,26 @@
 #!/bin/bash
-# Resume Low Voltage Hot Temperature experiments only
+# Continue Low Voltage Hot Temperature from FFT
 
 set -e
 
 echo "========================================"
-echo "Resume: Low Voltage - Hot Temperature"
+echo "Continue: Low Voltage - Hot Temperature"
 echo "========================================"
 echo ""
-echo "This will collect Low_Hot data only:"
-echo "  - Hot Temp (80°C): 15 files"
+echo "Already completed:"
+echo "  ✅ Attack_susan"
+echo "  ✅ Attack_qsort_large"
+echo "  ✅ Attack_bitcount"
+echo "  ✅ Attack_dijkstra"
+echo "  ✅ Attack_sha"
 echo ""
-echo "Estimated time: 1.5-2 hours"
+echo "Will collect:"
+echo "  - Attack_FFT (9 cycles)"
+echo "  - Attack_CRC32 (9 cycles)"
+echo "  - Benign 7개 (6 cycles each)"
+echo "  - Idle 1개 (6 cycles)"
+echo ""
+echo "Estimated time: 2 hours"
 echo ""
 read -p "Continue? (y/N): " CONFIRM
 if [[ "$CONFIRM" != "y" ]]; then
@@ -23,13 +33,6 @@ MEASURED=$(vcgencmd measure_volts core)
 echo ""
 echo "[*] Current voltage setting: over_voltage=$VOLTAGE"
 echo "[*] Measured voltage: $MEASURED"
-if [[ "$VOLTAGE" != "-6" ]]; then
-    echo "[!] WARNING: Expected over_voltage=-6 for Low Voltage experiments"
-    read -p "Continue anyway? (y/N): " CONFIRM2
-    if [[ "$CONFIRM2" != "y" ]]; then
-        exit 0
-    fi
-fi
 
 # Create output directory
 RESULT_DIR="results_v3"
@@ -37,7 +40,7 @@ mkdir -p "$RESULT_DIR/Low_Hot"
 
 echo ""
 echo "[*] Results will be saved to:"
-echo "    - $RESULT_DIR/Low_Hot/ (Hot Temp 80°C)"
+echo "    - $RESULT_DIR/Low_Hot/"
 echo ""
 
 # Benchmarks
@@ -45,17 +48,26 @@ BENCHMARKS=("susan" "qsort_large" "bitcount" "dijkstra" "sha" "FFT" "CRC32")
 
 echo ""
 echo "========================================"
-echo "Low Voltage - Hot Temperature (80°C)"
+echo "Continuing Attack experiments"
 echo "========================================"
 echo ""
 
-# Attack experiments (9 cycles each)
-for bench in "${BENCHMARKS[@]}"; do
-    echo ""
-    echo "[Attack] $bench (Low Voltage, Hot 80°C)"
-    python3 collect_cycle.py Attack "$bench" "$RESULT_DIR/Low_Hot/Attack_${bench}.csv" --cycles 9 --hot
-    sleep 30
-done
+# Attack FFT and CRC32 (remaining)
+echo ""
+echo "[Attack] FFT (Low Voltage, Hot 80°C)"
+python3 collect_cycle.py Attack "FFT" "$RESULT_DIR/Low_Hot/Attack_FFT.csv" --cycles 9 --hot
+sleep 30
+
+echo ""
+echo "[Attack] CRC32 (Low Voltage, Hot 80°C)"
+python3 collect_cycle.py Attack "CRC32" "$RESULT_DIR/Low_Hot/Attack_CRC32.csv" --cycles 9 --hot
+sleep 30
+
+echo ""
+echo "========================================"
+echo "Benign experiments"
+echo "========================================"
+echo ""
 
 # Benign experiments (6 cycles each)
 for bench in "${BENCHMARKS[@]}"; do
@@ -64,6 +76,12 @@ for bench in "${BENCHMARKS[@]}"; do
     python3 collect_cycle.py Benign "$bench" "$RESULT_DIR/Low_Hot/Benign_${bench}.csv" --cycles 6 --hot
     sleep 30
 done
+
+echo ""
+echo "========================================"
+echo "Idle experiment"
+echo "========================================"
+echo ""
 
 # Idle experiment (6 cycles)
 echo ""
